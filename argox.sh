@@ -6,8 +6,8 @@ VERSION=1.0
 # 各变量默认值
 CDN='https://ghproxy.com'
 SERVER_DEFAULT='icook.hk'
-UUID_DEFAULT='ffffffff-ffff-ffff-ffff-ffffffffffff'
-WS_PATH_DEFAULT='argox'
+UUID_DEFAULT='ff1111ff-f11f-f11f-ffff-ffff1111ffff'
+WS_PATH_DEFAULT='gogogo'
 WORK_DIR='/etc/argox'
 CLOUDFLARED_PORT='54321'
 TEMP_DIR='/tmp/argox'
@@ -361,11 +361,11 @@ EOF
                         "dest":3001
                     },
                     {
-                        "path":"/${WS_PATH}-vl",
+                        "path":"/${WS_PATH}-lll",
                         "dest":3002
                     },
                     {
-                        "path":"/${WS_PATH}-vm",
+                        "path":"/${WS_PATH}-mmm",
                         "dest":3003
                     },
                     {
@@ -416,7 +416,7 @@ EOF
                 "network":"ws",
                 "security":"none",
                 "wsSettings":{
-                    "path":"/${WS_PATH}-vl"
+                    "path":"/${WS_PATH}-lll"
                 }
             },
             "sniffing":{
@@ -443,7 +443,7 @@ EOF
             "streamSettings":{
                 "network":"ws",
                 "wsSettings":{
-                    "path":"/${WS_PATH}-vm"
+                    "path":"/${WS_PATH}-mmm"
                 }
             },
             "sniffing":{
