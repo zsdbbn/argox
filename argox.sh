@@ -6,8 +6,8 @@ VERSION=1.0
 # 各变量默认值
 CDN='https://ghproxy.com'
 SERVER_DEFAULT='icook.hk'
-UUID_DEFAULT='ffffff11-ff11-ff11-ffff-ffffffff1111'
-WS_PATH_DEFAULT='ff11'
+UUID_DEFAULT='ffffffff-ffff-ffff-ffff-ffffffffffff'
+WS_PATH_DEFAULT='argox'
 WORK_DIR='/etc/argox'
 CLOUDFLARED_PORT='54321'
 TEMP_DIR='/tmp/argox'
@@ -258,8 +258,8 @@ check_dependencies() {
     CHECK_WGET=$(wget 2>&1 | head -n 1)
     grep -qi 'busybox' <<< "$CHECK_WGET" && ${PACKAGE_INSTALL[int]} wget >/dev/null 2>&1
 
-    DEPS_CHECK=("bash" "python3")
-    DEPS_INSTALL=("bash" "python3")
+    DEPS_CHECK=("bash" "python3" "rc-update")
+    DEPS_INSTALL=("bash" "python3" "openrc")
     for ((g=0; g<${#DEPS_CHECK[@]}; g++)); do [ ! $(type -p ${DEPS_CHECK[g]}) ] && [[ ! "${DEPS[@]}" =~ "${DEPS_INSTALL[g]}" ]] && DEPS+=(${DEPS_INSTALL[g]}); done
     if [ "${#DEPS[@]}" -ge 1 ]; then
       info "\n $(text 7) ${DEPS[@]} \n"
@@ -546,6 +546,18 @@ EOF
   check_install
   [[ ${STATUS[0]} = "$(text 27)" ]] && systemctl enable --now argo && info "\n Argo $(text 28) $(text 37) \n" || warning "\n Argo $(text 28) $(text 38) \n"
   [[ ${STATUS[1]} = "$(text 27)" ]] && systemctl enable --now xray && info "\n Xray $(text 28) $(text 37) \n" || warning "\n Xray $(text 28) $(text 38) \n"
+  
+  # 如果 Alpine 系统，放到开机自启动
+  if [ "$SYSTEM" = 'Alpine' ]; then
+    cat > /etc/local.d/startup.start << EOF
+#!/usr/bin/env bash
+
+systemctl start argo
+systemctl start xray
+EOF
+    chmod +x /etc/local.d/startup.start
+    rc-update add local
+  fi
 }
 
 export_list() {
