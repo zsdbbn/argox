@@ -6,7 +6,7 @@ VERSION=1.0
 # 各变量默认值
 CDN='https://ghproxy.com'
 SERVER_DEFAULT='icook.hk'
-UUID_DEFAULT='ff1111ff-f11f-f11f-ffff-ffff1111ffff'
+UUID_DEFAULT='ff1111ff-f11f-f11f-f11f-ffff1111ffff'
 WS_PATH_DEFAULT='gogogo'
 WORK_DIR='/etc/argox'
 CLOUDFLARED_PORT='54321'
