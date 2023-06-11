@@ -6,7 +6,7 @@ VERSION=1.0
 # 各变量默认值
 CDN='https://ghproxy.com'
 SERVER_DEFAULT='icook.hk'
-UUID_DEFAULT='ff1111ff-f11f-f11f-f11f-ffff1111ffff'
+UUID_DEFAULT='ffff1234-f123-123-ffff-ffff1234ffff'
 WS_PATH_DEFAULT='gogogo'
 WORK_DIR='/etc/argox'
 CLOUDFLARED_PORT='54321'
@@ -290,7 +290,7 @@ json_argo() {
   [ ! -e $WORK_DIR/tunnel.yml ] && cat > $WORK_DIR/tunnel.yml << EOF
 tunnel: $(cut -d\" -f12 <<< $ARGO_JSON)
 credentials-file: $WORK_DIR/tunnel.json
-protocol: h2mux
+protocol: http2
 
 ingress:
   - hostname: ${ARGO_DOMAIN}
@@ -312,9 +312,9 @@ install_argox() {
     ARGO_RUNS="$WORK_DIR/cloudflared tunnel --edge-ip-version auto --config $WORK_DIR/tunnel.yml run"
     json_argo
   elif [[ -n "${ARGO_TOKEN}" && -n "${ARGO_DOMAIN}" ]]; then
-    ARGO_RUNS="$WORK_DIR/cloudflared tunnel --edge-ip-version auto --protocol h2mux run --token ${ARGO_TOKEN}"
+    ARGO_RUNS="$WORK_DIR/cloudflared tunnel --edge-ip-version auto --protocol http2 run --token ${ARGO_TOKEN}"
   else
-    ARGO_RUNS="$WORK_DIR/cloudflared tunnel --edge-ip-version auto --no-autoupdate --protocol h2mux --metrics localhost:$CLOUDFLARED_PORT --url http://localhost:8080"
+    ARGO_RUNS="$WORK_DIR/cloudflared tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --metrics localhost:$CLOUDFLARED_PORT --url http://localhost:8080"
   fi
 
   cat > /etc/systemd/system/argo.service << EOF
@@ -361,11 +361,11 @@ EOF
                         "dest":3001
                     },
                     {
-                        "path":"/${WS_PATH}-lll",
+                        "path":"/${WS_PATH}-vl",
                         "dest":3002
                     },
                     {
-                        "path":"/${WS_PATH}-mmm",
+                        "path":"/${WS_PATH}-vm",
                         "dest":3003
                     },
                     {
@@ -416,7 +416,7 @@ EOF
                 "network":"ws",
                 "security":"none",
                 "wsSettings":{
-                    "path":"/${WS_PATH}-lll"
+                    "path":"/${WS_PATH}-vl"
                 }
             },
             "sniffing":{
@@ -443,7 +443,7 @@ EOF
             "streamSettings":{
                 "network":"ws",
                 "wsSettings":{
-                    "path":"/${WS_PATH}-mmm"
+                    "path":"/${WS_PATH}-vm"
                 }
             },
             "sniffing":{
@@ -549,13 +549,13 @@ EOF
   
   # 如果 Alpine 系统，放到开机自启动
   if [ "$SYSTEM" = 'Alpine' ]; then
-    cat > /etc/local.d/startup.start << EOF
+    cat > /etc/local.d/argox.start << EOF
 #!/usr/bin/env bash
 
 systemctl start argo
 systemctl start xray
 EOF
-    chmod +x /etc/local.d/startup.start
+    chmod +x /etc/local.d/argox.start
     rc-update add local
   fi
 }
@@ -627,14 +627,14 @@ change_argo() {
     case "$CHANGE_TO" in
       1 ) systemctl disable --now argo
           [ -e $WORK_DIR/tunnel.json ] && rm -f $WORK_DIR/tunnel.{json,yml}
-          sed -i "s@ExecStart.*@ExecStart=$WORK_DIR/cloudflared tunnel --edge-ip-version auto --protocol h2mux --no-autoupdate --metrics localhost:$CLOUDFLARED_PORT --url http://localhost:8080@g" /etc/systemd/system/argo.service
+          sed -i "s@ExecStart.*@ExecStart=$WORK_DIR/cloudflared tunnel --edge-ip-version auto --protocol http2 --no-autoupdate --metrics localhost:$CLOUDFLARED_PORT --url http://localhost:8080@g" /etc/systemd/system/argo.service
           systemctl enable --now argo
           ;;
       2 ) argo_variable
           systemctl disable --now argo
           if [ -n "$ARGO_TOKEN" ]; then
             [ -e $WORK_DIR/tunnel.json ] && rm -f $WORK_DIR/tunnel.{json,yml}
-            sed -i "s@ExecStart.*@ExecStart=$WORK_DIR/cloudflared tunnel --edge-ip-version auto --protocol h2mux run --token ${ARGO_TOKEN}@g" /etc/systemd/system/argo.service
+            sed -i "s@ExecStart.*@ExecStart=$WORK_DIR/cloudflared tunnel --edge-ip-version auto --protocol http2 run --token ${ARGO_TOKEN}@g" /etc/systemd/system/argo.service
           elif [ -n "$ARGO_JSON" ]; then
             [ -e $WORK_DIR/tunnel.json ] && rm -f $WORK_DIR/tunnel.{json,yml}
             json_argo            
@@ -657,6 +657,9 @@ uninstall() {
   else
     error "\n $(text 15) \n"
   fi
+
+  # 如果 Alpine 系统，删除开机自启动
+  [ "$SYSTEM" = 'Alpine' ] && ( rm -f /etc/local.d/argox.start; rc-update add local )
 }
 
 # Argo 与 Xray 的最新版本 
