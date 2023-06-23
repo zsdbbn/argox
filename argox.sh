@@ -512,7 +512,7 @@ EOF
     ],
     "dns":{
         "servers":[
-            "https+local://1.1.1.1/dns-query"
+            "https://dns.adguard.com/dns-query"
         ]
     }
 }
