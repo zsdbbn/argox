@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 # 当前脚本版本号
-VERSION=1.0
+VERSION=1.1
 
 # 各变量默认值
 CDN='https://ghproxy.com'
-SERVER_DEFAULT='icook.hk'
-UUID_DEFAULT='ffff1234-f123-123-ffff-ffff1234ffff'
-WS_PATH_DEFAULT='gogogo'
+SERVER_DEFAULT='icook.tw'
+UUID_DEFAULT='ffffffff-ffff-ffff-ffff-ffffffffffff'
+WS_PATH_DEFAULT='argox'
 WORK_DIR='/etc/argox'
 CLOUDFLARED_PORT='54321'
 TEMP_DIR='/tmp/argox'
@@ -18,8 +18,8 @@ mkdir -p $TEMP_DIR
 
 E[0]="Language:\n 1. English (default) \n 2. 简体中文"
 C[0]="${E[0]}"
-E[1]="Users can easily obtain the JSON of a fixed domain name tunnel through the accompanying function website at https://fscarmen.cloudflare.now.cc"
-C[1]="用户可以通过配套的功能网轻松获取固定域名隧道的 json, https://fscarmen.cloudflare.now.cc"
+E[1]="For better network traffic diversion in various scenarios, split config.json into inbound.json and outbound.json"
+C[1]="为了更好的在各种情景下分流，把 config.json 拆分为 inbound.json 和 outbound.json"
 E[2]="Project to create Argo tunnels and Xray specifically for VPS, detailed:[https://github.com/fscarmen/argox]\n Features:\n\t • Allows the creation of Argo tunnels via Token, Json and ad hoc methods. User can easily obtain the json at https://fscarmen.cloudflare.now.cc .\n\t • Extremely fast installation method, saving users time.\n\t • Support system: Ubuntu, Debian, CentOS, Alpine and Arch Linux 3.\n\t • Support architecture: AMD,ARM and s390x\n"
 C[2]="本项目专为 VPS 添加 Argo 隧道及 Xray,详细说明: [https://github.com/fscarmen/argox]\n 脚本特点:\n\t • 允许通过 Token, Json 及 临时方式来创建 Argo 隧道,用户通过以下网站轻松获取 json: https://fscarmen.cloudflare.now.cc\n\t • 极速安装方式,大大节省用户时间\n\t • 智能判断操作系统: Ubuntu 、Debian 、CentOS 、Alpine 和 Arch Linux,请务必选择 LTS 系统\n\t • 支持硬件结构类型: AMD 和 ARM\n"
 E[3]="Input errors up to 5 times.The script is aborted."
@@ -154,10 +154,10 @@ check_arch() {
 
 # 查安装及运行状态，下标0: argo，下标1: xray，下标2：docker；状态码: 26 未安装， 27 已安装未运行， 28 运行中
 check_install() {
-  STATUS[0]=$(text 26) && [ -e /etc/systemd/system/argo.service ] && STATUS[0]=$(text 27) && [ "$(systemctl is-active argo)" = 'active' ] && STATUS[0]=$(text 28)
-  STATUS[1]=$(text 26) && [ -e /etc/systemd/system/xray.service ] && STATUS[1]=$(text 27) && [ "$(systemctl is-active xray)" = 'active' ] && STATUS[1]=$(text 28)
-  [[ ${STATUS[0]} = "$(text 26)" ]] && [ ! -e $WORK_DIR/cloudflared ] && { wget -qO $TEMP_DIR/cloudflared $CDN/https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$ARGO_ARCH >/dev/null 2>&1 && chmod +x $TEMP_DIR/cloudflared >/dev/null 2>&1; }&
-  [[ ${STATUS[1]} = "$(text 26)" ]] && [ ! -e $WORK_DIR/xray ] && { wget -qO $TEMP_DIR/Xray.zip $CDN/https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-$XRAY_ARCH.zip >/dev/null 2>&1; unzip -qo $TEMP_DIR/Xray.zip xray *.dat -d $TEMP_DIR >/dev/null 2>&1; }&
+  STATUS[0]=$(text 26) && [ -s /etc/systemd/system/argo.service ] && STATUS[0]=$(text 27) && [ "$(systemctl is-active argo)" = 'active' ] && STATUS[0]=$(text 28)
+  STATUS[1]=$(text 26) && [ -s /etc/systemd/system/xray.service ] && STATUS[1]=$(text 27) && [ "$(systemctl is-active xray)" = 'active' ] && STATUS[1]=$(text 28)
+  [[ ${STATUS[0]} = "$(text 26)" ]] && [ ! -s $WORK_DIR/cloudflared ] && { wget -qO $TEMP_DIR/cloudflared $CDN/https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$ARGO_ARCH >/dev/null 2>&1 && chmod +x $TEMP_DIR/cloudflared >/dev/null 2>&1; }&
+  [[ ${STATUS[1]} = "$(text 26)" ]] && [ ! -s $WORK_DIR/xray ] && { wget -qO $TEMP_DIR/Xray.zip $CDN/https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-$XRAY_ARCH.zip >/dev/null 2>&1; unzip -qo $TEMP_DIR/Xray.zip xray *.dat -d $TEMP_DIR >/dev/null 2>&1; }&
 }
 
 check_system_info() {
@@ -165,17 +165,12 @@ check_system_info() {
   VIRT=$(systemd-detect-virt 2>/dev/null | tr 'A-Z' 'a-z')
   [ -n "$VIRT" ] || VIRT=$(hostnamectl 2>/dev/null | tr 'A-Z' 'a-z' | grep virtualization | sed "s/.*://g")
 
-  CMD=( "$(grep -i pretty_name /etc/os-release 2>/dev/null | cut -d \" -f2)"
-        "$(hostnamectl 2>/dev/null | grep -i system | cut -d : -f2)"
-        "$(lsb_release -sd 2>/dev/null)"
-        "$(grep -i description /etc/lsb-release 2>/dev/null | cut -d \" -f2)"
-        "$(grep . /etc/redhat-release 2>/dev/null)"
-        "$(grep . /etc/issue 2>/dev/null | cut -d \\ -f1 | sed '/^[ ]*$/d')"
-      )
-
-  for i in "${CMD[@]}"; do
-    SYS="$i" && [ -n "$SYS" ] && break
-  done
+  [ -s /etc/os-release ] && SYS="$(grep -i pretty_name /etc/os-release | cut -d \" -f2)"
+  [[ -z "$SYS" && $(type -p hostnamectl) ]] && SYS="$(hostnamectl | grep -i system | cut -d : -f2)"
+  [[ -z "$SYS" && $(type -p lsb_release) ]] && SYS="$(lsb_release -sd)"
+  [[ -z "$SYS" && -s /etc/lsb-release ]] && SYS="$(grep -i description /etc/lsb-release | cut -d \" -f2)"
+  [[ -z "$SYS" && -s /etc/redhat-release ]] && SYS="$(grep . /etc/redhat-release)"
+  [[ -z "$SYS" && -s /etc/issue ]] && SYS="$(grep . /etc/issue | cut -d '\' -f1 | sed '/^[ ]*$/d')"
 
   REGEX=("debian" "ubuntu" "centos|red hat|kernel|oracle linux|alma|rocky" "amazon linux" "arch linux" "alpine")
   RELEASE=("Debian" "Ubuntu" "CentOS" "CentOS" "Arch" "Alpine")
@@ -286,8 +281,8 @@ check_dependencies() {
 
 # Json 生成两个配置文件
 json_argo() {
-  [ ! -e $WORK_DIR/tunnel.json ] && echo $ARGO_JSON > $WORK_DIR/tunnel.json
-  [ ! -e $WORK_DIR/tunnel.yml ] && cat > $WORK_DIR/tunnel.yml << EOF
+  [ ! -s $WORK_DIR/tunnel.json ] && echo $ARGO_JSON > $WORK_DIR/tunnel.json
+  [ ! -s $WORK_DIR/tunnel.yml ] && cat > $WORK_DIR/tunnel.yml << EOF
 tunnel: $(cut -d\" -f12 <<< $ARGO_JSON)
 credentials-file: $WORK_DIR/tunnel.json
 protocol: http2
@@ -305,9 +300,11 @@ install_argox() {
   wait
   [ ! -d /etc/systemd/system ] && mkdir -p /etc/systemd/system
   mkdir -p $WORK_DIR && echo "$L" > $WORK_DIR/language
-  [ -e "$VARIABLE_FILE" ] && cp $VARIABLE_FILE $WORK_DIR/
+  [ -s "$VARIABLE_FILE" ] && cp $VARIABLE_FILE $WORK_DIR/
   # Argo 生成守护进程文件
-  [ ! -e $WORK_DIR/cloudflared ] && wait && { mv $TEMP_DIR/cloudflared $WORK_DIR; }
+  local i=1
+  [ ! -s $WORK_DIR/cloudflared ] && wait && while [ "$i" -le 20 ]; do [ -s $TEMP_DIR/cloudflared ] && mv $TEMP_DIR/cloudflared $WORK_DIR && break; ((i++)); sleep 2; done
+  [ "$i" -ge 20 ] && local APP=ARGO && error "\n $(text_eval 48) "
   if [[ -n "${ARGO_JSON}" && -n "${ARGO_DOMAIN}" ]]; then
     ARGO_RUNS="$WORK_DIR/cloudflared tunnel --edge-ip-version auto --config $WORK_DIR/tunnel.yml run"
     json_argo
@@ -335,8 +332,10 @@ WantedBy=multi-user.target
 EOF
 
   # 生成配置文件及守护进程文件
-  [ ! -e $WORK_DIR/xray ] && wait && { mv $TEMP_DIR/{xray,geo*.dat} $WORK_DIR; }
-  cat > $WORK_DIR/config.json << EOF
+  local i=1
+  [ ! -s $WORK_DIR/xray ] && wait && while [ "$i" -le 20 ]; do [[ -s $TEMP_DIR/xray && -s $TEMP_DIR/geoip.dat && -s $TEMP_DIR/geosite.dat ]] && mv $TEMP_DIR/{xray,geo*.dat} $WORK_DIR && break; ((i++)); sleep 2; done
+  [ "$i" -ge 20 ] && local APP=Xray && error "\n $(text_eval 48) "
+  cat > $WORK_DIR/inbound.json << EOF
 {
     "log":{
         "access":"/dev/null",
@@ -515,7 +514,11 @@ EOF
         "servers":[
             "https+local://8.8.8.8/dns-query"
         ]
-    },
+    }
+}
+EOF
+  cat > $WORK_DIR/outbound.json << EOF
+{
     "outbounds":[
         {
             "protocol":"freedom"
@@ -534,7 +537,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 NoNewPrivileges=yes
-ExecStart=$WORK_DIR/xray run -c $WORK_DIR/config.json
+ExecStart=$WORK_DIR/xray run -confdir $WORK_DIR/
 Restart=on-failure
 RestartPreventExitStatus=23
 
@@ -566,14 +569,14 @@ export_list() {
   if grep -q "^ExecStart.*8080$" /etc/systemd/system/argo.service; then
     sleep 5 && ARGO_DOMAIN=$(wget -qO- http://localhost:$CLOUDFLARED_PORT/quicktunnel | cut -d\" -f4)
   else
-    ARGO_DOMAIN=${ARGO_DOMAIN:-"$(grep '^vless' $WORK_DIR/list | head -n 1 | sed "s@.*host=\(.*\)&.*@\1@g")"}
+    ARGO_DOMAIN=${ARGO_DOMAIN:-"$(grep -m1 '^vless' $WORK_DIR/list | sed "s@.*host=\(.*\)&.*@\1@g")"}
   fi
-  SERVER=${SERVER:-"$(grep '^vless' $WORK_DIR/list | head -n 1 | sed "s/.*@\(.*\):443.*/\1/g")"}
+  SERVER=${SERVER:-"$(grep -m1 '^vless' $WORK_DIR/list | sed "s/.*@\(.*\):443.*/\1/g")"}
   UUID=${UUID:-"$(grep 'password' $WORK_DIR/config.json | awk -F \" 'NR==1{print $4}')"}
-  WS_PATH=${WS_PATH:-"$(grep 'path.*vm' $WORK_DIR/config.json | head -n 1 | sed "s@.*/\(.*\)-vm.*@\1@g")"} 
+  WS_PATH=${WS_PATH:-"$(grep -m1 'path.*vm' $WORK_DIR/config.json | sed "s@.*/\(.*\)-vm.*@\1@g")"} 
 
   # 生成配置文件
-  VMESS="{ \"v\": \"2\", \"ps\": \"ArgoX-Vm\", \"add\": \"icook.hk\", \"port\": \"443\", \"id\": \"${UUID}\", \"aid\": \"0\", \"scy\": \"none\", \"net\": \"ws\", \"type\": \"none\", \"host\": \"${ARGO_DOMAIN}\", \"path\": \"/${WS_PATH}-vm\", \"tls\": \"tls\", \"sni\": \"${ARGO_DOMAIN}\", \"alpn\": \"\" }"
+  VMESS="{ \"v\": \"2\", \"ps\": \"ArgoX-Vm\", \"add\": \"${SERVER}\", \"port\": \"443\", \"id\": \"${UUID}\", \"aid\": \"0\", \"scy\": \"none\", \"net\": \"ws\", \"type\": \"none\", \"host\": \"${ARGO_DOMAIN}\", \"path\": \"/${WS_PATH}-vm\", \"tls\": \"tls\", \"sni\": \"${ARGO_DOMAIN}\", \"alpn\": \"\" }"
   cat > $WORK_DIR/list << EOF
 *******************************************
 V2-rayN:
@@ -616,8 +619,8 @@ change_argo() {
   [[ ${STATUS[0]} = "$(text 26)" ]] && error " $(text 39) "
 
   case $(grep "ExecStart" /etc/systemd/system/argo.service) in 
-    *--config* ) ARGO_TYPE='Json'; ARGO_DOMAIN="$(grep '^vless' $WORK_DIR/list | head -n 1 | sed "s@.*host=\(.*\)&.*@\1@g")" ;;
-    *--token* ) ARGO_TYPE='Token'; ARGO_DOMAIN="$(grep '^vless' $WORK_DIR/list | head -n 1 | sed "s@.*host=\(.*\)&.*@\1@g")" ;;
+    *--config* ) ARGO_TYPE='Json'; ARGO_DOMAIN="$(grep -m1 '^vless' $WORK_DIR/list | sed "s@.*host=\(.*\)&.*@\1@g")" ;;
+    *--token* ) ARGO_TYPE='Token'; ARGO_DOMAIN="$(grep -m1 '^vless' $WORK_DIR/list | sed "s@.*host=\(.*\)&.*@\1@g")" ;;
     * ) ARGO_TYPE='Try'; ARGO_DOMAIN=$(wget -qO- http://localhost:$CLOUDFLARED_PORT/quicktunnel | cut -d\" -f4) ;;
   esac
 
@@ -626,17 +629,17 @@ change_argo() {
   hint " $(text 41) \n" && reading " $(text 24) " CHANGE_TO
     case "$CHANGE_TO" in
       1 ) systemctl disable --now argo
-          [ -e $WORK_DIR/tunnel.json ] && rm -f $WORK_DIR/tunnel.{json,yml}
+          [ -s $WORK_DIR/tunnel.json ] && rm -f $WORK_DIR/tunnel.{json,yml}
           sed -i "s@ExecStart.*@ExecStart=$WORK_DIR/cloudflared tunnel --edge-ip-version auto --protocol http2 --no-autoupdate --metrics localhost:$CLOUDFLARED_PORT --url http://localhost:8080@g" /etc/systemd/system/argo.service
           systemctl enable --now argo
           ;;
       2 ) argo_variable
           systemctl disable --now argo
           if [ -n "$ARGO_TOKEN" ]; then
-            [ -e $WORK_DIR/tunnel.json ] && rm -f $WORK_DIR/tunnel.{json,yml}
+            [ -s $WORK_DIR/tunnel.json ] && rm -f $WORK_DIR/tunnel.{json,yml}
             sed -i "s@ExecStart.*@ExecStart=$WORK_DIR/cloudflared tunnel --edge-ip-version auto --protocol http2 run --token ${ARGO_TOKEN}@g" /etc/systemd/system/argo.service
           elif [ -n "$ARGO_JSON" ]; then
-            [ -e $WORK_DIR/tunnel.json ] && rm -f $WORK_DIR/tunnel.{json,yml}
+            [ -s $WORK_DIR/tunnel.json ] && rm -f $WORK_DIR/tunnel.{json,yml}
             json_argo            
             sed -i "s@ExecStart.*@ExecStart=$WORK_DIR/cloudflared tunnel --edge-ip-version auto --config $WORK_DIR/tunnel.yml run@g" /etc/systemd/system/argo.service
           fi
@@ -703,11 +706,11 @@ menu_setting() {
   ACTION[0]() { exit; }
 
   if [[ ${STATUS[*]} =~ $(text 27)|$(text 28) ]]; then
-    if [ -e $WORK_DIR/cloudflared ]; then
+    if [ -s $WORK_DIR/cloudflared ]; then
       ARGO_VERSION=$($WORK_DIR/cloudflared -v | awk '{print $3}' | sed "s@^@Version: &@g")
       ss -nltp | grep -q "127\.0\.0\.1:$CLOUDFLARED_PORT.*cloudflared" && ARGO_CHECKHEALTH="$(text 46): $(wget -qO- http://localhost:$CLOUDFLARED_PORT/healthcheck | sed "s/OK/$(text 37)/")"
     fi
-    [ -e $WORK_DIR/xray ] && XRAY_VERSION=$($WORK_DIR/xray version | awk 'NR==1 {print $2}' | sed "s@^@Version: &@g")
+    [ -s $WORK_DIR/xray ] && XRAY_VERSION=$($WORK_DIR/xray version | awk 'NR==1 {print $2}' | sed "s@^@Version: &@g")
     OPTION[1]="1.  $(text 29)"
     [ ${STATUS[0]} = "$(text 28)" ] && OPTION[2]="2.  $(text 27) Argo" || OPTION[2]="2.  $(text 28) Argo"
     [ ${STATUS[1]} = "$(text 28)" ] && OPTION[3]="3.  $(text 27) Xray" || OPTION[3]="3.  $(text 28) Xray"
