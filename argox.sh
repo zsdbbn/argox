@@ -344,7 +344,7 @@ EOF
     },
     "inbounds":[
         {
-            "listen":"127.0.0.1",
+            # "listen":"127.0.0.1",
             "port":8080,
             "protocol":"vless",
             "settings":{
@@ -512,7 +512,7 @@ EOF
     ],
     "dns":{
         "servers":[
-            "https+local://8.8.8.8/dns-query"
+            "https+local://1.1.1.1/dns-query"
         ]
     }
 }
